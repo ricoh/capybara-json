@@ -4,20 +4,17 @@ class Capybara::RackTestJson::Driver < to_inherit
   def body
     MultiJson.decode(source) || {}
   end
+  alias parsed_body body
 
   %w[ get delete ].each do |method|
     class_eval %{
       def #{method}(path, params = {}, env = {})
         super(path, params, env_for_rack(env))
       end
-
-      def #{method}!(path, params = {}, env = {})
-        handle_error { #{method}(path, params, env) }
-      end
     }
   end
 
-  %w[ post put ].each do |method|
+  %w[ post put post_json put_json ].each do |method|
     class_eval %{
       def #{method}(path, json, env = {})
         json = MultiJson.encode(json) unless json.is_a?(String)
@@ -30,14 +27,28 @@ class Capybara::RackTestJson::Driver < to_inherit
         
         super(path, {}, request_env)
       end
+    }
+  end
 
-      def #{method}!(path, json, env = {})
-        handle_error { #{method}(path, json, env) }
+  %w[ post put post_json put_json ].each do |method|
+    class_eval %{
+      def #{method}!(url, json, headers = {})
+        handle_error { #{method}(url, json, headers) }
       end
     }
   end
 
+  def cookie(key)
+    cookie_jar[key]
+  end
+
+  alias clear_all clear_cookies
+
   protected
+  def cookie_jar
+    Capybara.current_session.driver.instance_variable_get(:@_rack_mock_sessions)[:default].cookie_jar
+  end
+
   def env_for_rack(env)
     env.inject({}) do |rack_env, (key, value)|
       env_key = key.upcase.gsub('-', '_')
