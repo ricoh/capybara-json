@@ -135,8 +135,9 @@ class Capybara::HTTPClientJson::Driver < Capybara::Driver::Base
       else
         @response = e.res
       end
+    ensure
+      duplicate_cookies.each {|cookie| cookies << cookie } if cookies
     end
-    duplicate_cookies.each {|cookie| cookies << cookie } if cookies
 
     @response
   end
