@@ -37,8 +37,12 @@ class Capybara::HTTPClientJson::Driver < Capybara::Driver::Base
   end
   alias headers response_headers
 
-  def cookies
+  def response_cookies
     response.cookies
+  end
+
+  def cookies
+    @client ? @client.cookies : nil
   end
 
   def set_cookie(cookie, uri)
@@ -108,6 +112,18 @@ class Capybara::HTTPClientJson::Driver < Capybara::Driver::Base
   def process(method, path, params = {}, headers = {}, options = {})
     @current_url = @rack_server.url(path)
 
+    duplicate_cookies_and_index = []
+    if cookies and headers.kind_of?(Hash) and headers['Cookie']
+      key = headers['Cookie'].split('=').first
+
+      cookies.each_with_index do |cookie, i|
+        if cookie.name == key
+          duplicate_cookies_and_index << {:index => i, :cookie => cookie}
+          cookies.delete_at(i)
+        end
+      end
+    end
+
     begin
       @response = client.__send__(method, @current_url, params, headers, options)
     rescue HTTPClient::BadResponseError => e
@@ -116,7 +132,11 @@ class Capybara::HTTPClientJson::Driver < Capybara::Driver::Base
       else
         @response = e.res
       end
+    ensure
+      duplicate_cookies_and_index.each {|c_i| cookies.insert(c_i[:index], c_i[:cookie]) } if cookies
     end
+
+    @response
   end
 
   def handle_error(&block)

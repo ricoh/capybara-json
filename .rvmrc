@@ -1,1 +1,1 @@
-rvm gemset use capybara-json
+rvm use 2.1.5@capybara-json
