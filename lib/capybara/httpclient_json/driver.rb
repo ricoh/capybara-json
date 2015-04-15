@@ -112,16 +112,13 @@ class Capybara::HTTPClientJson::Driver < Capybara::Driver::Base
   def process(method, path, params = {}, headers = {}, options = {})
     @current_url = @rack_server.url(path)
 
-    duplicate_cookies = []
+    duplicate_cookies_and_index = []
     if cookies and headers.kind_of?(Hash) and headers['Cookie']
-      duplicate_indexes = []
-
       key = headers['Cookie'].split('=').first
 
       cookies.each_with_index do |cookie, i|
         if cookie.name == key
-          duplicate_indexes << i
-          duplicate_cookies << cookie
+          duplicate_cookies_and_index << {:index => i, :cookie => cookie}
           cookies.delete_at(i)
         end
       end
@@ -136,7 +133,7 @@ class Capybara::HTTPClientJson::Driver < Capybara::Driver::Base
         @response = e.res
       end
     ensure
-      duplicate_cookies.each {|cookie| cookies << cookie } if cookies
+      duplicate_cookies_and_index.each {|c_i| cookies.insert(c_i[:index], c_i[:cookie]) } if cookies
     end
 
     @response
